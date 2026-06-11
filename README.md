@@ -1,7 +1,8 @@
 # Bill — Assistente de Desktop 🟣
 
-Um mascote que vive na parte inferior da sua tela (acima da barra de tarefas do Windows), passeia
-aleatoriamente de um lado para o outro e, ao ser clicado, abre um chat conectado à **Azure OpenAI**.
+Um mascote (o Bill, em pixel art) que flutua na parte inferior da sua tela envolto em fogo azul,
+voa aleatoriamente de um lado para o outro, pode ser arrastado e arremessado — caindo com
+gravidade de volta à linha do chão — e, ao ser clicado, abre um chat conectado à **Azure OpenAI**.
 
 ## Stack
 
@@ -29,6 +30,7 @@ aleatoriamente de um lado para o outro e, ao ser clicado, abre um chat conectado
    ```
 
 O mascote aparece na parte de baixo da tela. **Clique nele** para abrir o chat,
+**arraste-o** para carregá-lo (ao soltar ele cai e quica até o chão),
 **clique com o botão direito** para fechar o assistente. `Esc` fecha o balão de chat.
 
 ## Configurando a Azure OpenAI
@@ -61,9 +63,10 @@ src/
     ├── index.html
     └── src/
         ├── App.tsx                    # Orquestra mascote, chat e menu
-        ├── components/Pet.tsx         # Movimento aleatório (rAF) + visual do mascote
+        ├── components/Pet.tsx         # Voo aleatório, arrasto + física de queda, máquina de animação
+        ├── components/BillSprite.tsx  # Pixel art do Bill em SVG, parametrizado por frame
         ├── components/ChatBalloon.tsx # Balão de chat acima do mascote
-        └── styles.css                 # Visual, animações (andar, piscar, digitando)
+        └── styles.css                 # Animações CSS (andar, pulinho, sombra, digitando)
 ```
 
 **Como funciona o click-through:** a janela cobre uma faixa de ~440px na parte inferior da
@@ -74,8 +77,9 @@ volta a ser "fantasma".
 
 ## Próximos passos (roadmap)
 
-- [ ] Trocar o shape CSS por **sprites/GIFs animados** (andar, parado, falando) —
-      basta substituir o conteúdo de `.pet-body` por um `<img>` trocando frames por estado
+- [x] Pixel art animada do Bill (andar, piscar, olhar ao redor, tirar a cartola, acenar) —
+      desenhada em `BillSprite.tsx`; para usar GIFs/sprites próprios, troque esse componente
+      por um `<img>` que seleciona o arquivo conforme o estado
 - [ ] **Streaming** das respostas (token a token) via `ReadableStream` + IPC
 - [ ] Ícone na bandeja do sistema (tray) com menu
 - [ ] Memória de conversa persistente entre sessões
