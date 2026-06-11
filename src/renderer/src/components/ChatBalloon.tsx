@@ -7,11 +7,15 @@ type Msg = ChatMessage & { error?: boolean }
 type ChatBalloonProps = {
   anchorX: number
   onClose: () => void
+  onExit: () => void
 }
 
-export function ChatBalloon({ anchorX, onClose }: ChatBalloonProps): React.JSX.Element {
+export function ChatBalloon({ anchorX, onClose, onExit }: ChatBalloonProps): React.JSX.Element {
   const [messages, setMessages] = useState<Msg[]>([
-    { role: 'assistant', content: 'Oi! Eu sou o Bill 👋 Pode me perguntar qualquer coisa!' }
+    {
+      role: 'assistant',
+      content: 'Oi! Eu sou o Bill 👋 Pode me perguntar qualquer coisa! (digite /exit para eu sumir)'
+    }
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -36,6 +40,13 @@ export function ChatBalloon({ anchorX, onClose }: ChatBalloonProps): React.JSX.E
   const send = async (): Promise<void> => {
     const text = input.trim()
     if (!text || loading) return
+
+    // Comando de saída: aceita "/exit" (com ou sem espaço) e encerra o app
+    if (/^\/\s*exit$/i.test(text)) {
+      setInput('')
+      onExit()
+      return
+    }
 
     const history: Msg[] = [...messages.filter((m) => !m.error), { role: 'user', content: text }]
     setMessages((prev) => [...prev, { role: 'user', content: text }])

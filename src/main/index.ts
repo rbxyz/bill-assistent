@@ -1,8 +1,12 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { config as loadEnv } from 'dotenv'
 
-loadEnv({ path: join(app.getAppPath(), '.env') })
+// Carrega o .env de locais prováveis, para funcionar tanto em dev quanto
+// empacotado (ao lado do executável) ou rodando pelo terminal (diretório atual).
+for (const dir of [process.cwd(), dirname(app.getPath('exe')), app.getAppPath()]) {
+  loadEnv({ path: join(dir, '.env') })
+}
 
 // Altura da faixa transparente na parte inferior da tela.
 // Precisa caber o mascote + o balão de chat aberto acima dele.
@@ -29,6 +33,7 @@ function createWindow(): void {
     movable: false,
     hasShadow: false,
     skipTaskbar: true,
+    minimizable: false,
     fullscreenable: false,
     alwaysOnTop: true,
     webPreferences: {

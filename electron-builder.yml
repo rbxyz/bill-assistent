@@ -1,0 +1,17 @@
+appId: com.rbueno.bill
+productName: Bill
+directories:
+  output: release
+files:
+  - out/**/*
+  - package.json
+extraResources:
+  - from: .env.example
+    to: .env.example
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Utility
+  synopsis: Mascote de desktop que conversa via Azure OpenAI
+  artifactName: ${productName}-${version}-${arch}.${ext}

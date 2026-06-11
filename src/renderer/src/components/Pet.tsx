@@ -88,11 +88,11 @@ type DragState = {
 type PetProps = {
   xRef: MutableRefObject<number>
   paused: boolean
+  exiting: boolean
   onActivate: () => void
-  onMenu: (x: number, y: number) => void
 }
 
-export function Pet({ xRef, paused, onActivate, onMenu }: PetProps): React.JSX.Element {
+export function Pet({ xRef, paused, exiting, onActivate }: PetProps): React.JSX.Element {
   const elRef = useRef<HTMLDivElement>(null)
   const liftRef = useRef<HTMLDivElement>(null)
   const shadowRef = useRef<HTMLDivElement>(null)
@@ -119,6 +119,8 @@ export function Pet({ xRef, paused, onActivate, onMenu }: PetProps): React.JSX.E
   const spriteRef = useRef<SpriteState>(BASE)
   const pausedRef = useRef(false)
   pausedRef.current = paused || hovered
+  const exitingRef = useRef(false)
+  exitingRef.current = exiting
 
   const startAction = (steps: Step[]): void => {
     actionRef.current = { steps, index: 0, until: performance.now() + steps[0].d }
@@ -139,6 +141,12 @@ export function Pet({ xRef, paused, onActivate, onMenu }: PetProps): React.JSX.E
       const dt = m.last ? Math.min((t - m.last) / 1000, 0.05) : 0
       m.last = t
       const maxX = window.innerWidth - PET_WIDTH
+
+      // Saindo: congela posição e sprite; a animação CSS do buraco negro assume
+      if (exitingRef.current) {
+        raf = requestAnimationFrame(tick)
+        return
+      }
 
       // ---- movimento ----
       if (m.mode === 'hover') {
@@ -280,6 +288,7 @@ export function Pet({ xRef, paused, onActivate, onMenu }: PetProps): React.JSX.E
         'pet',
         hovered ? 'hovered' : '',
         grabbed ? 'grabbed' : '',
+        exiting ? 'vanishing' : '',
         `facing-${facing}`
       ].join(' ')}
       onPointerEnter={() => {
@@ -356,14 +365,11 @@ export function Pet({ xRef, paused, onActivate, onMenu }: PetProps): React.JSX.E
           onActivate() // foi um clique: abre/fecha o chat
         }
       }}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        onMenu(e.clientX, e.clientY)
-      }}
       title="Clique para conversar; arraste para me jogar!"
     >
       <div ref={liftRef} className="pet-lift">
         <div className="pet-flip">
+          {exiting && <div className="pet-blackhole" />}
           <div className="pet-glow" />
           <div className={`pet-sprite${hopping ? ' hop' : ''}${landed ? ' land' : ''}`}>
             <BillSprite {...sprite} />
