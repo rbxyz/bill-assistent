@@ -1,0 +1,351 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+
+/* O palco ocupa toda a faixa e deixa cliques atravessarem;
+   só o mascote, o balão e o menu são interativos */
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ===================== Mascote (Bill, pixel art) ===================== */
+
+.pet {
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  width: 54px;
+  height: 76px;
+  pointer-events: auto;
+  cursor: pointer;
+  will-change: transform;
+}
+
+/* camada do flip horizontal + reações de hover/clique */
+.pet-flip {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  width: 54px;
+  height: 64px;
+  transition: transform 0.15s ease;
+  transform-origin: 50% 100%;
+}
+
+.pet.facing-left .pet-flip {
+  transform: scaleX(-1);
+}
+
+.pet.hovered .pet-flip {
+  transform: scale(1.1);
+}
+
+.pet.hovered.facing-left .pet-flip {
+  transform: scaleX(-1) scale(1.1);
+}
+
+.pet:active .pet-flip {
+  transform: scale(1.12, 0.88);
+}
+
+.pet:active.facing-left .pet-flip {
+  transform: scaleX(-1) scale(1.12, 0.88);
+}
+
+/* camada do sprite: balanço ao andar e pulinho nas ações */
+.pet-sprite {
+  width: 54px;
+  height: 64px;
+}
+
+.pet-sprite svg {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.pet.walking .pet-sprite {
+  animation: bob 0.32s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.pet-sprite.hop {
+  animation: hop 0.45s ease-out;
+}
+
+@keyframes hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-9px);
+  }
+}
+
+.pet-shadow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 38px;
+  height: 8px;
+  margin-left: -19px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  filter: blur(2px);
+}
+
+.pet.walking .pet-shadow {
+  animation: shadow-pulse 0.32s ease-in-out infinite;
+}
+
+@keyframes shadow-pulse {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleX(0.82);
+    opacity: 0.7;
+  }
+}
+
+/* ===================== Balão de chat ===================== */
+
+.balloon {
+  position: absolute;
+  bottom: 90px;
+  width: 330px;
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(26, 24, 38, 0.94);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  color: #eceaf6;
+  overflow: hidden;
+}
+
+.balloon-tail {
+  position: absolute;
+  bottom: -9px;
+  width: 16px;
+  height: 16px;
+  background: rgba(26, 24, 38, 0.94);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  transform: rotate(45deg);
+}
+
+.balloon-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.balloon-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.balloon-close {
+  background: none;
+  border: none;
+  color: #b6b1cf;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.balloon-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.balloon-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.balloon-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.balloon-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+}
+
+.bubble {
+  max-width: 82%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: #6354d9;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.bubble.assistant {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.1);
+  border-bottom-left-radius: 4px;
+}
+
+.bubble.error {
+  background: rgba(220, 80, 80, 0.18);
+  border: 1px solid rgba(220, 80, 80, 0.4);
+}
+
+.bubble.typing {
+  display: flex;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.bubble.typing span {
+  width: 6px;
+  height: 6px;
+  background: #b6b1cf;
+  border-radius: 50%;
+  animation: typing 1.2s infinite;
+}
+
+.bubble.typing span:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.bubble.typing span:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.balloon-input {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.balloon-input input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+}
+
+.balloon-input input:focus {
+  border-color: #ffd84d;
+}
+
+.balloon-input input::placeholder {
+  color: #8c87a6;
+}
+
+.balloon-input button {
+  background: #6354d9;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  width: 38px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.balloon-input button:hover:not(:disabled) {
+  background: #7666e8;
+}
+
+.balloon-input button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ===================== Menu de contexto ===================== */
+
+.context-menu {
+  position: absolute;
+  pointer-events: auto;
+  background: rgba(26, 24, 38, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.context-menu button {
+  background: none;
+  border: none;
+  color: #eceaf6;
+  font-size: 13px;
+  padding: 8px 14px;
+  cursor: pointer;
+  border-radius: 7px;
+  white-space: nowrap;
+}
+
+.context-menu button:hover {
+  background: rgba(220, 80, 80, 0.25);
+}
