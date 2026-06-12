@@ -8,6 +8,18 @@ for (const dir of [process.cwd(), dirname(app.getPath('exe')), app.getAppPath()]
   loadEnv({ path: join(dir, '.env') })
 }
 
+// No Wayland (GNOME) o compositor controla o empilhamento e ignora o
+// "always on top" dos apps — o Bill acaba coberto ao clicar em outra janela.
+// Forçando o backend X11 (XWayland), a janela respeita _NET_WM_STATE_ABOVE e
+// fica de fato sempre no topo. Sobrescrevível com OZONE_PLATFORM=wayland.
+if (process.platform === 'linux' && !process.env.OZONE_PLATFORM) {
+  app.commandLine.appendSwitch('ozone-platform', 'x11')
+  // Em XWayland com janela transparente, o processo de GPU costuma crashar e
+  // cair para software mesmo; desligar a aceleração evita esse "crash spam" e
+  // estabiliza o render (o mascote é leve e animado por CSS).
+  app.disableHardwareAcceleration()
+}
+
 // Altura da faixa transparente na parte inferior da tela.
 // Precisa caber o mascote + o balão de chat aberto acima dele.
 const STRIP_HEIGHT = 440
@@ -43,8 +55,14 @@ function createWindow(): void {
     }
   })
 
-  // Mantém o mascote acima de praticamente tudo, inclusive janelas fullscreen leves
+  // Mantém o mascote acima de tudo: nível alto, em todos os workspaces e
+  // inclusive sobre janelas em tela cheia.
   win.setAlwaysOnTop(true, 'screen-saver')
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+
+  // Alguns gerenciadores de janela rebaixam a janela quando ela perde o foco;
+  // reaplica o "sempre no topo" para o Bill voltar à frente.
+  win.on('blur', () => win?.setAlwaysOnTop(true, 'screen-saver'))
 
   // Cliques atravessam as áreas transparentes; `forward: true` continua
   // entregando eventos de mousemove ao renderer, que reativa a
