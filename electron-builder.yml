@@ -1,5 +1,5 @@
 appId: com.rbueno.bill
-productName: Bill
+productName: Bill Cipher - Assistant
 directories:
   output: release
 files:
@@ -9,10 +9,21 @@ extraResources:
   - from: .env.example
     to: .env.example
 linux:
+  icon: build/icon.png
   target:
     - AppImage
     - deb
   category: Utility
   synopsis: Mascote de desktop que conversa via Azure OpenAI
-  maintainer: rbueno <rbueno@boxdistribuidor.com.br>
+  maintainer: rbxyz <rbueno@boxdistribuidor.com.br>
   artifactName: ${productName}-${version}-${arch}.${ext}
+win:
+  icon: build/icon.ico
+  target:
+    - nsis
+    - portable
+nsis:
+  artifactName: ${productName}-${version}-${arch}-setup.${ext}
+  include: build/installer.nsh
+portable:
+  artifactName: ${productName}-${version}-${arch}-portable.${ext}

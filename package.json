@@ -1,15 +1,18 @@
 {
   "name": "bill-assistant",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Assistente pessoal de desktop — um mascote que passeia na parte inferior da tela e conversa via Azure OpenAI",
   "main": "./out/main/index.js",
-  "author": "rbueno",
+  "author": "rbxyz",
   "private": true,
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
-    "dist": "electron-vite build && electron-builder --linux"
+    "icon": "node scripts/generate-icon.mjs",
+    "clean:release": "node -e \"require('fs').rmSync('release',{recursive:true,force:true})\"",
+    "dist": "pnpm clean:release && electron-vite build && electron-builder --linux",
+    "dist:win": "pnpm clean:release && electron-vite build && electron-builder --win"
   },
   "dependencies": {
     "dotenv": "^17.4.2",

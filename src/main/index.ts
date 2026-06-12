@@ -4,7 +4,11 @@ import { config as loadEnv } from 'dotenv'
 
 // Carrega o .env de locais prováveis, para funcionar tanto em dev quanto
 // empacotado (ao lado do executável) ou rodando pelo terminal (diretório atual).
-for (const dir of [process.cwd(), dirname(app.getPath('exe')), app.getAppPath()]) {
+// No Windows portable o exe roda extraído em pasta temporária; o diretório do
+// .exe original vem em PORTABLE_EXECUTABLE_DIR.
+const envDirs = [process.cwd(), dirname(app.getPath('exe')), app.getAppPath()]
+if (process.env.PORTABLE_EXECUTABLE_DIR) envDirs.unshift(process.env.PORTABLE_EXECUTABLE_DIR)
+for (const dir of envDirs) {
   loadEnv({ path: join(dir, '.env') })
 }
 
@@ -24,20 +28,79 @@ if (process.platform === 'linux' && !process.env.OZONE_PLATFORM) {
 // Precisa caber o mascote + o balão de chat aberto acima dele.
 const STRIP_HEIGHT = 440
 
-const SYSTEM_PROMPT = `Você é o Bill, um assistente pessoal simpático que mora na parte inferior da tela do usuário, em formato de mascote.
-Responda sempre em português brasileiro, de forma direta, útil e amigável.
+// Personas dos mascotes (selecionadas pelo comando /pet no renderer). A chave
+// casa com o PetId em src/renderer/src/pets.ts.
+const BASE_PERSONA = `Responda sempre em português brasileiro, de forma direta, útil e amigável.
 Mantenha as respostas curtas quando possível — você vive em um balão de chat pequeno.`
+
+const PERSONAS: Record<string, string> = {
+  bill: `Você é o Bill, um assistente pessoal simpático que mora na parte inferior da tela do usuário, em formato de mascote.
+${BASE_PERSONA}`,
+  buddy: `Você é o Buddy, um pequeno invasor alienígena pixelado e amigável que pousou na tela do usuário. Tem um jeito curioso e levemente atrapalhado com os costumes humanos, mas é prestativo e bem-humorado.
+${BASE_PERSONA}`
+}
+
+const DEFAULT_PERSONA = 'bill'
 
 let win: BrowserWindow | null = null
 
-function createWindow(): void {
-  const { workArea } = screen.getPrimaryDisplay()
+// Display que hospeda a faixa do Bill no momento; a janela migra entre
+// monitores quando ele viaja ou se teletransporta.
+let currentDisplayId: number | null = null
 
-  win = new BrowserWindow({
+function stripBounds(display: Electron.Display): Electron.Rectangle {
+  const { workArea } = display
+  return {
     x: workArea.x,
     y: workArea.y + workArea.height - STRIP_HEIGHT,
     width: workArea.width,
-    height: STRIP_HEIGHT,
+    height: STRIP_HEIGHT
+  }
+}
+
+// Displays ordenados da esquerda para a direita (vizinhança horizontal)
+function sortedDisplays(): Electron.Display[] {
+  return screen
+    .getAllDisplays()
+    .slice()
+    .sort((a, b) => a.workArea.x - b.workArea.x)
+}
+
+function currentDisplayIndex(displays: Electron.Display[]): number {
+  const i = displays.findIndex((d) => d.id === currentDisplayId)
+  return i === -1 ? 0 : i
+}
+
+export type ScreenInfo = { hasLeft: boolean; hasRight: boolean; width: number }
+
+function screenInfo(): ScreenInfo {
+  const displays = sortedDisplays()
+  const idx = currentDisplayIndex(displays)
+  return {
+    hasLeft: idx > 0,
+    hasRight: idx < displays.length - 1,
+    width: displays[idx].workArea.width
+  }
+}
+
+function moveToDisplay(display: Electron.Display): void {
+  currentDisplayId = display.id
+  if (!win) return
+  // setBounds em janela não-redimensionável não altera o tamanho no Windows;
+  // libera momentaneamente para a faixa assumir a largura do novo monitor.
+  win.setResizable(true)
+  win.setBounds(stripBounds(display))
+  win.setResizable(false)
+  win.setAlwaysOnTop(true, 'screen-saver')
+}
+
+function createWindow(): void {
+  const display = screen.getPrimaryDisplay()
+  currentDisplayId = display.id
+  const bounds = stripBounds(display)
+
+  win = new BrowserWindow({
+    ...bounds,
     show: false,
     frame: false,
     transparent: true,
@@ -80,7 +143,7 @@ function createWindow(): void {
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string }
 
-async function callAzure(messages: ChatMessage[]): Promise<string> {
+async function callAzure(messages: ChatMessage[], persona: string): Promise<string> {
   const endpoint = process.env.AZURE_OPENAI_ENDPOINT?.replace(/\/+$/, '')
   const apiKey = process.env.AZURE_OPENAI_API_KEY
   const deployment = process.env.AZURE_OPENAI_DEPLOYMENT
@@ -97,7 +160,10 @@ async function callAzure(messages: ChatMessage[]): Promise<string> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
     body: JSON.stringify({
-      messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages]
+      messages: [
+        { role: 'system', content: PERSONAS[persona] ?? PERSONAS[DEFAULT_PERSONA] },
+        ...messages
+      ]
     })
   })
 
@@ -121,11 +187,40 @@ app.whenReady().then(() => {
 
   ipcMain.on('app:quit', () => app.quit())
 
-  ipcMain.handle('chat:send', async (_event, messages: ChatMessage[]) => {
+  ipcMain.handle('pet:screen-info', () => screenInfo())
+
+  // Migra a faixa para o monitor vizinho (Bill voando para fora da borda)
+  ipcMain.handle('pet:travel', (_event, dir: 'left' | 'right') => {
+    const displays = sortedDisplays()
+    const idx = currentDisplayIndex(displays)
+    const next = displays[idx + (dir === 'right' ? 1 : -1)]
+    if (next) moveToDisplay(next)
+    return screenInfo()
+  })
+
+  // Teletransporte: leva a faixa para um monitor aleatório (pode ser o mesmo)
+  ipcMain.handle('pet:teleport', () => {
+    const displays = sortedDisplays()
+    moveToDisplay(displays[Math.floor(Math.random() * displays.length)])
+    return screenInfo()
+  })
+
+  // Se o monitor atual for desconectado ou mudar de resolução, reencaixa a faixa
+  screen.on('display-removed', () => {
+    const displays = sortedDisplays()
+    if (!displays.some((d) => d.id === currentDisplayId)) {
+      moveToDisplay(screen.getPrimaryDisplay())
+    }
+  })
+  screen.on('display-metrics-changed', (_event, display) => {
+    if (display.id === currentDisplayId) moveToDisplay(display)
+  })
+
+  ipcMain.handle('chat:send', async (_event, messages: ChatMessage[], persona?: string) => {
     try {
       // Mantém o histórico enviado curto para economizar tokens
       const recent = messages.slice(-12).map(({ role, content }) => ({ role, content }))
-      return { ok: true as const, content: await callAzure(recent) }
+      return { ok: true as const, content: await callAzure(recent, persona ?? DEFAULT_PERSONA) }
     } catch (err) {
       return { ok: false as const, error: err instanceof Error ? err.message : String(err) }
     }
